@@ -81,7 +81,7 @@ if (-not $authToken) {
 }
 
 # --- Step 8: Stop old instance if running ---
-pm2 delete $SERVICE_NAME 2>$null
+& { pm2 delete $SERVICE_NAME } 2>$null
 
 # --- Step 9: Start with pm2 ---
 Info "启动 RemoteControl Server..."
@@ -94,7 +94,7 @@ Info "保存 pm2 进程列表..."
 pm2 save
 
 Info "配置开机自启..."
-pm2 startup 2>$null
+& { pm2 startup } 2>$null
 
 # --- Done ---
 Write-Host ""
