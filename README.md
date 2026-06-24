@@ -35,63 +35,55 @@ irm https://raw.githubusercontent.com/ACCSCI/RemoteControl/master/setup.ps1 | ie
 
 安装完成后，笔记本浏览器打开 `http://<台式机 Tailscale-IP>:18765`，输入 Token 连接即可。
 
-### 服务管理命令
+### 服务管理
 
-```bash
-pm2 status              # 查看运行状态
-pm2 logs                # 查看日志
-pm2 restart remotecontrol   # 重启服务
-pm2 stop remotecontrol      # 停止服务
-pm2 delete remotecontrol    # 删除服务
+```powershell
+pm2 status                    # 查看运行状态
+pm2 logs                      # 查看日志
+pm2 restart remotecontrol     # 重启服务
+pm2 stop remotecontrol        # 停止服务
+pm2 delete remotecontrol      # 删除服务
 ```
 
 ### 更新
 
-```bash
+```powershell
 cd ~/RemoteControl
 git pull
-cd client && npm install && npx vite build && cd ..
-cd server && npm install --production
+cd client; npm install; npx vite build; cd ..
+cd server; npm install --production
 pm2 restart remotecontrol
 ```
 
 ### 卸载
 
-```bash
+```powershell
 pm2 stop remotecontrol
 pm2 delete remotecontrol
 pm2 save
-rm -rf ~/RemoteControl
+Remove-Item -Recurse -Force ~/RemoteControl
 ```
 
 如需同时删除 pm2：
 
-```bash
+```powershell
 npm uninstall -g pm2
-rm -rf ~/.pm2
+Remove-Item -Recurse -Force ~/.pm2
 ```
 
 ## 手动安装
 
 如果不想用一键脚本，也可以手动安装：
 
-```bash
-# 克隆
+```powershell
 git clone https://github.com/ACCSCI/RemoteControl.git
 cd RemoteControl
 
-# 安装依赖
-cd server && npm install && cd ..
-cd client && npm install && cd ..
+cd server; npm install
+cd ../client; npm install; npx vite build
 
-# 构建前端
-cd client && npx vite build && cd ..
-
-# 配置 Token
-set AUTH_TOKEN=your-secret-token-here
-
-# 启动
-cd server && node server.js
+$env:AUTH_TOKEN="your-secret-token-here"
+cd ../server; node server.js
 ```
 
 ## 开发模式
