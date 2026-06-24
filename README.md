@@ -45,6 +45,32 @@ pm2 stop remotecontrol      # 停止服务
 pm2 delete remotecontrol    # 删除服务
 ```
 
+### 更新
+
+```bash
+cd ~/RemoteControl
+git pull
+cd client && npm install && npx vite build && cd ..
+cd server && npm install --production
+pm2 restart remotecontrol
+```
+
+### 卸载
+
+```bash
+pm2 stop remotecontrol
+pm2 delete remotecontrol
+pm2 save
+rm -rf ~/RemoteControl
+```
+
+如需同时删除 pm2：
+
+```bash
+npm uninstall -g pm2
+rm -rf ~/.pm2
+```
+
 ## 手动安装
 
 如果不想用一键脚本，也可以手动安装：
