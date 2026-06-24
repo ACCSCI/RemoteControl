@@ -9,44 +9,64 @@
      (Laptop)                        (Desktop)              (ConPTY on Win11)
 ```
 
-## 快速开始
+## 一键安装（推荐）
 
-### 1. 安装依赖
+SSH 连接到台式机后，运行以下命令即可完成安装：
+
+**Git Bash：**
 
 ```bash
-npm run install:all
+bash <(curl -fsSL https://raw.githubusercontent.com/ACCSCI/RemoteControl/master/setup.sh)
 ```
 
-### 2. 配置
+**PowerShell：**
 
-在 Server 端设置环境变量或修改 `server/lib/config.js`：
+```powershell
+irm https://raw.githubusercontent.com/ACCSCI/RemoteControl/master/setup.ps1 | iex
+```
+
+脚本会自动：
+1. 检测并安装 Node.js（通过 winget，如未安装）
+2. 克隆仓库到 `~/RemoteControl`
+3. 安装依赖并构建前端
+4. 使用 pm2 启动后台服务（SSH 断开不影响运行）
+5. 配置开机自启
+6. 提示输入认证 Token（不输入则自动生成随机 Token）
+
+安装完成后，笔记本浏览器打开 `http://<台式机 Tailscale-IP>:18765`，输入 Token 连接即可。
+
+### 服务管理命令
 
 ```bash
-# 必须修改的
+pm2 status              # 查看运行状态
+pm2 logs                # 查看日志
+pm2 restart remotecontrol   # 重启服务
+pm2 stop remotecontrol      # 停止服务
+pm2 delete remotecontrol    # 删除服务
+```
+
+## 手动安装
+
+如果不想用一键脚本，也可以手动安装：
+
+```bash
+# 克隆
+git clone https://github.com/ACCSCI/RemoteControl.git
+cd RemoteControl
+
+# 安装依赖
+cd server && npm install && cd ..
+cd client && npm install && cd ..
+
+# 构建前端
+cd client && npx vite build && cd ..
+
+# 配置 Token
 set AUTH_TOKEN=your-secret-token-here
 
-# 可选
-set PORT=18765
-set SHELL=powershell.exe
+# 启动
+cd server && node server.js
 ```
-
-### 3. 构建 Client
-
-```bash
-npm run build:client
-```
-
-### 4. 启动 Server
-
-```bash
-npm start
-```
-
-Server 会同时提供 WebSocket 服务和静态文件托管。
-
-### 5. 从笔记本访问
-
-浏览器打开 `http://<tailscale-ip>:18765`，输入 Token 连接即可。
 
 ## 开发模式
 
