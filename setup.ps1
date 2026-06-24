@@ -5,11 +5,11 @@
 $ErrorActionPreference = "Stop"
 $REPO_URL = "https://github.com/ACCSCI/RemoteControl.git"
 $INSTALL_DIR = "$env:USERPROFILE\RemoteControl"
-$SERVICE_NAME = "remotecontrol"
+$TASK_NAME = "RemoteControl"
 
 function Info($msg)  { Write-Host "[✓] $msg" -ForegroundColor Green }
 function Warn($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
-function Error($msg) { Write-Host "[✗] $msg" -ForegroundColor Red; exit 1 }
+function Fail($msg)  { Write-Host "[✗] $msg" -ForegroundColor Red; exit 1 }
 
 Write-Host ""
 Write-Host "=== RemoteControl 一键安装 ==="
@@ -24,17 +24,17 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
         winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
         $env:PATH = "C:\Program Files\nodejs;$env:PATH"
         if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-            Error "Node.js 安装后仍无法找到 node，请重新打开终端后再次运行本脚本"
+            Fail "Node.js 安装后仍无法找到 node，请重新打开终端后再次运行本脚本"
         }
         Info "Node.js 安装完成: $(node -v)"
     } else {
-        Error "未找到 winget，请手动安装 Node.js: https://nodejs.org"
+        Fail "未找到 winget，请手动安装 Node.js: https://nodejs.org"
     }
 }
 
 # --- Step 2: Check Git ---
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    Error "未找到 git，请先安装 Git: https://git-scm.com"
+    Fail "未找到 git，请先安装 Git: https://git-scm.com"
 }
 
 # --- Step 3: Clone or update repo ---
@@ -61,14 +61,7 @@ npm install
 Info "构建 Client..."
 npx vite build
 
-# --- Step 6: Install pm2 globally ---
-if (-not (Get-Command pm2 -ErrorAction SilentlyContinue)) {
-    Info "安装 pm2 进程管理器..."
-    npm install -g pm2
-}
-Info "pm2 已就绪"
-
-# --- Step 7: Get AUTH_TOKEN ---
+# --- Step 6: Get AUTH_TOKEN ---
 Write-Host ""
 $authToken = $env:AUTH_TOKEN
 if (-not $authToken) {
@@ -80,34 +73,54 @@ if (-not $authToken) {
     $authToken = $userToken
 }
 
-# --- Step 8: Stop old instance if running ---
-& { pm2 delete $SERVICE_NAME } 2>$null
+# --- Step 7: Stop old task if exists ---
+Unregister-ScheduledTask -TaskName $TASK_NAME -Confirm:$false -ErrorAction SilentlyContinue
 
-# --- Step 9: Start with pm2 ---
-Info "启动 RemoteControl Server..."
-Set-Location "$INSTALL_DIR\server"
-$env:AUTH_TOKEN = $authToken
-pm2 start server.js --name $SERVICE_NAME
+# --- Step 8: Register Windows Scheduled Task ---
+Info "注册开机启动服务..."
 
-# --- Step 10: Save pm2 process list & set up auto-start ---
-Info "保存 pm2 进程列表..."
-pm2 save
+$action = New-ScheduledTaskAction `
+    -Execute "cmd.exe" `
+    -Argument "/c `"set AUTH_TOKEN=$authToken&& cd /d $INSTALL_DIR\server && node server.js`""
 
-Info "配置开机自启..."
-& { pm2 startup } 2>$null
+$settings = New-ScheduledTaskSettingsSet `
+    -AllowStartIfOnBatteries `
+    -DontStopIfGoingOnBatteries `
+    -ExecutionTimeLimit ([TimeSpan]::Zero) `
+    -RestartCount 3 `
+    -RestartInterval (New-TimeSpan -Minutes 1) `
+    -StartWhenAvailable
 
-# --- Done ---
+$trigger = New-ScheduledTaskTrigger -AtLogon
+
+Register-ScheduledTask `
+    -TaskName $TASK_NAME `
+    -Action $action `
+    -Trigger $trigger `
+    -Settings $settings `
+    -RunLevel Highest `
+    -Force
+
+# --- Step 9: Start now ---
+Start-ScheduledTask -TaskName $TASK_NAME
+Start-Sleep -Seconds 2
+
+# --- Step 10: Verify ---
+$taskInfo = Get-ScheduledTask -TaskName $TASK_NAME
+$port = "18765"
+
 Write-Host ""
 Write-Host "============================================"
 Info "安装完成！"
 Write-Host ""
-Write-Host "  服务已启动，开机自启已配置"
-Write-Host "  打开浏览器访问: http://<台式机IP>:18765"
+Write-Host "  服务状态: $($taskInfo.State)"
+Write-Host "  认证 Token: $authToken"
+Write-Host "  打开浏览器访问: http://<台式机IP>:$port"
 Write-Host ""
 Write-Host "  常用命令:"
-Write-Host "    pm2 status              查看运行状态"
-Write-Host "    pm2 logs                查看日志"
-Write-Host "    pm2 restart $SERVICE_NAME   重启服务"
-Write-Host "    pm2 stop $SERVICE_NAME      停止服务"
+Write-Host "    Get-ScheduledTask '$TASK_NAME'          # 查看状态"
+Write-Host "    Start-ScheduledTask '$TASK_NAME'        # 启动"
+Write-Host "    Stop-ScheduledTask '$TASK_NAME'         # 停止"
+Write-Host "    Unregister-ScheduledTask '$TASK_NAME'   # 卸载"
 Write-Host "============================================"
 Write-Host ""

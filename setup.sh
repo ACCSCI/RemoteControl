@@ -4,7 +4,6 @@ set -e
 
 REPO_URL="https://github.com/ACCSCI/RemoteControl.git"
 INSTALL_DIR="$HOME/RemoteControl"
-SERVICE_NAME="remotecontrol"
 
 # --- Colors ---
 RED='\033[0;31m'
@@ -16,19 +15,17 @@ info()  { echo -e "${GREEN}[✓]${NC} $1"; }
 warn()  { echo -e "${YELLOW}[!]${NC} $1"; }
 error() { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 
-# --- Step 1: Check / Install Node.js ---
 echo ""
 echo "=== RemoteControl 一键安装 ==="
 echo ""
 
+# --- Step 1: Check / Install Node.js ---
 if command -v node &>/dev/null; then
-  NODE_VER=$(node -v)
-  info "Node.js 已安装: $NODE_VER"
+  info "Node.js 已安装: $(node -v)"
 else
   warn "未检测到 Node.js，正在通过 winget 安装..."
   if command -v winget &>/dev/null; then
     winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
-    # Refresh PATH
     export PATH="/c/Program Files/nodejs:$PATH"
     if ! command -v node &>/dev/null; then
       error "Node.js 安装后仍无法找到 node，请重新打开终端后再次运行本脚本"
@@ -68,14 +65,7 @@ npm install
 info "构建 Client..."
 npx vite build
 
-# --- Step 6: Install pm2 globally ---
-if ! command -v pm2 &>/dev/null; then
-  info "安装 pm2 进程管理器..."
-  npm install -g pm2
-fi
-info "pm2 已就绪"
-
-# --- Step 7: Get AUTH_TOKEN ---
+# --- Step 6: Get AUTH_TOKEN ---
 echo ""
 if [ -n "$AUTH_TOKEN" ]; then
   info "使用环境变量 AUTH_TOKEN"
@@ -83,44 +73,38 @@ else
   echo -n "请输入认证 Token (留空使用默认值): "
   read -r USER_TOKEN
   if [ -z "$USER_TOKEN" ]; then
-    # Generate a random token
-    USER_TOKEN=$(node -e "console.log(require('crypto').randomBytes(16).toString('hex'))")
+    USER_TOKEN=$(node -e "process.stdout.write(require('crypto').randomBytes(16).toString('hex'))")
     warn "已生成随机 Token: $USER_TOKEN"
   fi
   export AUTH_TOKEN="$USER_TOKEN"
 fi
 
-# --- Step 8: Stop old instance if running ---
-pm2 delete "$SERVICE_NAME" 2>/dev/null || true
+# --- Step 7: Register as Windows service via Task Scheduler ---
+info "注册开机启动服务..."
+powershell.exe -NoProfile -Command "
+  Unregister-ScheduledTask -TaskName 'RemoteControl' -Confirm:`$false -ErrorAction SilentlyContinue;
+  \$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c \"set AUTH_TOKEN=$AUTH_TOKEN&& cd /d $INSTALL_DIR\\\server && node server.js\"';
+  \$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable;
+  \$trigger = New-ScheduledTaskTrigger -AtLogon;
+  Register-ScheduledTask -TaskName 'RemoteControl' -Action \$action -Trigger \$trigger -Settings \$settings -RunLevel Highest -Force
+"
 
-# --- Step 9: Start with pm2 ---
-info "启动 RemoteControl Server..."
-cd "$INSTALL_DIR/server"
-AUTH_TOKEN="$AUTH_TOKEN" pm2 start server.js --name "$SERVICE_NAME"
-
-# --- Step 10: Save pm2 process list & set up auto-start ---
-info "保存 pm2 进程列表..."
-pm2 save
-
-# Set up Windows startup (pm2-startup)
-info "配置开机自启..."
-if ! pm2 startup 2>/dev/null | grep -q "Startup"; then
-  pm2 startup || warn "开机自启配置失败，可手动运行: pm2 startup"
-fi
+# --- Step 8: Start now ---
+powershell.exe -NoProfile -Command "Start-ScheduledTask -TaskName 'RemoteControl'"
+sleep 2
 
 # --- Done ---
 echo ""
 echo "============================================"
 info "安装完成！"
 echo ""
-PORT=$(node -e "process.stdout.write('18765')")
-echo "  服务已启动，开机自启已配置"
-echo "  打开浏览器访问: http://<台式机IP>:$PORT"
+echo "  Token: $AUTH_TOKEN"
+echo "  打开浏览器访问: http://<台式机IP>:18765"
 echo ""
-echo "  常用命令:"
-echo "    pm2 status          查看运行状态"
-echo "    pm2 logs            查看日志"
-echo "    pm2 restart $SERVICE_NAME   重启服务"
-echo "    pm2 stop $SERVICE_NAME      停止服务"
+echo "  常用命令 (PowerShell):"
+echo "    Get-ScheduledTask 'RemoteControl'          # 查看状态"
+echo "    Start-ScheduledTask 'RemoteControl'        # 启动"
+echo "    Stop-ScheduledTask 'RemoteControl'         # 停止"
+echo "    Unregister-ScheduledTask 'RemoteControl'   # 卸载"
 echo "============================================"
 echo ""
