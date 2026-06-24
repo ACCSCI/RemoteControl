@@ -91,7 +91,7 @@ $settings = New-ScheduledTaskSettingsSet `
     -RestartInterval (New-TimeSpan -Minutes 1) `
     -StartWhenAvailable
 
-$trigger = New-ScheduledTaskTrigger -AtLogon
+$trigger = New-ScheduledTaskTrigger -AtStartup
 
 Register-ScheduledTask `
     -TaskName $TASK_NAME `

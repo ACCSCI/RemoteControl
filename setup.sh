@@ -85,7 +85,7 @@ powershell.exe -NoProfile -Command "
   Unregister-ScheduledTask -TaskName 'RemoteControl' -Confirm:`$false -ErrorAction SilentlyContinue;
   \$action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument '/c \"set AUTH_TOKEN=$AUTH_TOKEN&& cd /d $INSTALL_DIR\\\server && node server.js\"';
   \$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable;
-  \$trigger = New-ScheduledTaskTrigger -AtLogon;
+  \$trigger = New-ScheduledTaskTrigger -AtStartup;
   Register-ScheduledTask -TaskName 'RemoteControl' -Action \$action -Trigger \$trigger -Settings \$settings -RunLevel Highest -Force
 "
 
