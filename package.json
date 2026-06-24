@@ -1,0 +1,13 @@
+{
+  "name": "remotecontrol",
+  "version": "1.0.0",
+  "description": "Remote terminal control - persistent PTY over WebSocket",
+  "private": true,
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "build:client": "cd client && npm run build",
+    "start": "node server/server.js",
+    "dev:server": "cd server && node --watch server.js",
+    "dev:client": "cd client && npm run dev"
+  }
+}

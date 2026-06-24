@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RemoteControl</title>
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <!-- Connection overlay (shown when not connected) -->
+  <div id="connect-overlay">
+    <div class="connect-box">
+      <h1>RemoteControl</h1>
+      <p class="subtitle">连接到远程终端</p>
+      <div class="connect-form">
+        <label>
+          服务器地址
+          <input type="text" id="input-host" placeholder="100.x.x.x" autocomplete="off">
+        </label>
+        <label>
+          端口
+          <input type="text" id="input-port" placeholder="自动获取" autocomplete="off">
+        </label>
+        <label>
+          认证 Token
+          <input type="password" id="input-token" placeholder="输入 token" autocomplete="off">
+        </label>
+        <button id="btn-connect">连接</button>
+        <p id="connect-error" class="error"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main app (shown when connected) -->
+  <div id="app" class="hidden">
+    <div id="header">
+      <span class="logo">RemoteControl</span>
+      <span id="status" class="status disconnected">● 未连接</span>
+    </div>
+    <div id="tab-bar">
+      <div id="tabs"></div>
+      <button id="btn-new-tab" title="新建终端">+</button>
+    </div>
+    <div id="terminal-container">
+      <!-- Terminal divs are injected here -->
+    </div>
+    <div id="footer">
+      <span id="footer-info"></span>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
